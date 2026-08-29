@@ -81,6 +81,9 @@ class AMS02Simulator:
         # ===================================================================
         # Tracker: Constant relative uncertainty
         self.tracker_sigma_rel = TRACKER_SIGMA_REL # sigma_P / P = 4%
+
+        # Flag to toggle Tracker's ideal vs realistic resolution
+        self.use_tracker_resolution = USE_TRACKER_RESOLUTION
         
         # TOF: Parameterization of the temporal resolution
         # Formula: sigma_t = sqrt((A/Z)^2 + B^2)
@@ -228,7 +231,7 @@ class AMS02Simulator:
             
         return False
 
-    def get_rich_radiator(self, x_top: float, y_top: float, cos_theta: float, phi: float) -> str:
+    def get_rich_radiator(self, x_top: float, y_top: float, cos_theta: float, phi: float) -> float:
         """
         Linearly extrapolates the particle trajectory to the radiator plane 
         of the RICH detector and geometrically determines the hit region.
@@ -244,11 +247,11 @@ class AMS02Simulator:
             phi (float): Azimuthal angle [rad].
             
         Returns:
-            str or None: 'NaF', 'AGL', or None (if it misses both radiators).
+            float: 1 (NaF), 2 (AGL), or -999.0 (if it misses both radiators).
         """
         # For perfectly horizontal trajectories
         if cos_theta == 0.0:
-            return None
+            return -999.0
             
         # Trigonometric extraction
         sin_theta = np.sqrt(1.0 - cos_theta**2)
@@ -261,16 +264,16 @@ class AMS02Simulator:
         # NaF square (34.5 x 34.5 cm)
         naf_half_side = self.rich_naf_side / 2.0
         if abs(x_rich) <= naf_half_side and abs(y_rich) <= naf_half_side:
-            return 'NaF'
+            return 1
             
         # Aerogel circle (Radius 57 cm)
         # Using r^2 <= R^2 avoids the heavy np.sqrt() function
         r_rich_squared = x_rich**2 + y_rich**2
         if r_rich_squared <= self.rich_agl_radius**2:
-            return 'AGL'
+            return 2
             
         # Failed RICH acceptance
-        return None
+        return -999.0
     
     def smear_velocity_tof(self, beta_0: float, cos_theta: float) -> float:  
         """
@@ -369,7 +372,11 @@ class AMS02Simulator:
         Simulates the rigidity (P) measurement by the Silicon Tracker, applying 
         the statistical uncertainty arising from the detector's spatial resolution.
         
-        CURRENT: Assumes a constant relative uncertainty (sigma_P / P = 10%).
+        If the global flag 'USE_TRACKER_RESOLUTION' is disabled, the function 
+        bypasses the smearing and returns an ideal measurement (P = P0). This allows 
+        for controlled studies to isolate the intrinsic separation power of the TOF and RICH.
+        
+        CURRENT: Assumes a constant relative uncertainty (sigma_P / P = 4%).
         Formula: sigma_P = (sigma_P / P) * P0
         
         POSSIBLE FUTURE WORK:
@@ -384,6 +391,10 @@ class AMS02Simulator:
         Returns:
             float: Reconstructed rigidity (P) [GV], protected against non-physical values.
         """
+        # Bypass smearing if the Tracker is assumed to be ideal (Controlled Study Mode)
+        if not self.use_tracker_resolution:
+            return p0
+
         # Calculation of the absolute Gaussian error
         sigma_p = self.tracker_sigma_rel * p0
         
@@ -483,10 +494,13 @@ class AMS02Simulator:
         
         # RICH: Radiator Identification and Velocity Measurement
         radiator = self.get_rich_radiator(x, y, cos_theta, phi)
-        if radiator is not None:
-            beta_rich = self.smear_velocity_rich(beta_0, e_kn, radiator)
+        if radiator != -999.0:
+            radiator_str = 'NaF' if radiator == 1 else 'AGL'
+            beta_rich = self.smear_velocity_rich(beta_0, e_kn, radiator_str)
+            if beta_rich is None:
+                beta_rich = -999.0
         else:
-            beta_rich = None
+            beta_rich = -999.0
 
         # ===================================================================
         # 5. VARIABLE RECONSTRUCTION (Data Analysis)
@@ -495,29 +509,15 @@ class AMS02Simulator:
         m_aprox = round(event_mass) * self.mass_nucleon        
         
         # 5.1 Kinetic Energy Reconstruction (T = (gamma - 1) * m_approx)
-        if beta_tof is not None and beta_tof < 1.0:
-            t_measured_tof = (1.0 / np.sqrt(1.0 - beta_tof**2) - 1.0) * m_aprox
-        else:
-            t_measured_tof = None
-            
-        if beta_rich is not None and beta_rich < 1.0:
-            t_measured_rich = (1.0 / np.sqrt(1.0 - beta_rich**2) - 1.0) * m_aprox
-        else:
-            t_measured_rich = None
+        t_measured_tof = (1.0 / np.sqrt(1.0 - beta_tof**2) - 1.0) * m_aprox if (beta_tof != -999.0 and beta_tof < 1.0) else -999.0
+        t_measured_rich = (1.0 / np.sqrt(1.0 - beta_rich**2) - 1.0) * m_aprox if (beta_rich != -999.0 and beta_rich < 1.0) else -999.0
 
         # 5.2 Mass Reconstruction
         # Relativistic Inversion: m = (Z * P / beta) * np.sqrt(1 - beta^2)
         m_true = event_mass        
 
-        if beta_tof is not None and 0.0 < beta_tof < 1.0:
-            m_tof = (self.z_charge * p_recon / beta_tof) * np.sqrt(1.0 - beta_tof**2)
-        else:
-            m_tof = None
-            
-        if beta_rich is not None and 0.0 < beta_rich < 1.0:
-            m_rich = (self.z_charge * p_recon / beta_rich) * np.sqrt(1.0 - beta_rich**2)
-        else:
-            m_rich = None
+        m_tof = (self.z_charge * p_recon / beta_tof) * np.sqrt(1.0 - beta_tof**2) if (beta_tof != -999.0 and 0.0 < beta_tof < 1.0) else -999.0
+        m_rich = (self.z_charge * p_recon / beta_rich) * np.sqrt(1.0 - beta_rich**2) if (beta_rich != -999.0 and 0.0 < beta_rich < 1.0) else -999.0
 
         # ===================================================================
         # DATA EXPORT (Dictionary for ROOT)
@@ -541,7 +541,7 @@ class AMS02Simulator:
             # Measured and Reconstructed Quantities
             "P": p_recon,                  
             "beta_TOF": beta_tof,
-            "Radiator": radiator,  
+            "radiator": radiator,  
             "beta_RICH": beta_rich,
             "T_measured_TOF": t_measured_tof,   
             "T_measured_RICH": t_measured_rich,  
