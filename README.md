@@ -39,8 +39,3 @@ To reproduce the analytical results using the Python pipeline, execute the modul
 2. Run `main.py` to generate the mock cosmic data and create the ROOT `TTree`.
 3. Run `analyze_templates.py` to compute and export the theoretical probability curves.
 4. Run `ams_fraction_fitter.py` to perform the Maximum Likelihood fit and extract the <sup>10</sup>B/<sup>11</sup>B abundances.
-
-### C++ Environment
-*(Nota para o João: Adiciona aqui os comandos de compilação e execução, por exemplo, `make`, `./simulate`, etc.)*
-1. [Step 1: Compilation instructions]
-2. [Step 2: Execution instructions]
