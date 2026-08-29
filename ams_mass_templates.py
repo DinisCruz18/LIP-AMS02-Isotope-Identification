@@ -77,14 +77,14 @@ class AMSMassTemplateAnalytic:
         
         # Sodium Fluoride (NaF) radiator for Z=5
         self.rich_naf_n = RICH_NAF_N                  # Refractive index
-        self.rich_naf_thr = 1.0 / self.rich_naf_n # Cherenkov threshold (beta > 1/n)
+        self.rich_naf_thr = RICH_NAF_THR # Cherenkov threshold (beta > 1/n)
         self.rich_naf_A = RICH_NAF_A               # Resolution parameter A
         self.rich_naf_B = RICH_NAF_B               # Resolution parameter B
         self.rich_naf_E0 = RICH_NAF_E0                  # Stabilization energy [GeV/n]
         
         # Aerogel (AGL) radiator for Z=5
         self.rich_agl_n = RICH_AGL_N                   # Refractive index
-        self.rich_agl_thr = 1.0 / self.rich_agl_n # Cherenkov threshold (beta > 1/n)
+        self.rich_agl_thr = RICH_AGL_THR # Cherenkov threshold (beta > 1/n)
         self.rich_agl_A = RICH_AGL_A                 # Resolution parameter A
         self.rich_agl_B = RICH_AGL_B                 # Resolution parameter B
         self.rich_agl_E0 = RICH_AGL_E0                  # Stabilization energy [GeV/n]
@@ -417,8 +417,12 @@ class AMSMassTemplateAnalytic:
             # to prevent SciPy from integrating in zero-probability zones
             gamma_approx = 1.0 / np.sqrt(1.0 - beta_min**2)
             p_approx = (m_rec * beta_min * gamma_approx) / self.z_charge
-            p0_min = max(0.1, p_approx * 0.2) 
-            p0_max = p_approx * 5.0
+            
+            # OPTIMIZATION: Limit the integration window to +/- 5 sigmas of the Tracker
+            # Reduces CPU time and prevents dblquad failures
+            sigma_p_approx = p_approx * self.tracker_sigma_rel
+            p0_min = max(0.1, p_approx - 5.0 * sigma_p_approx) 
+            p0_max = p_approx + 5.0 * sigma_p_approx
             
             integral, _ = integrate.dblquad(
                 self.integrand_2D, 
