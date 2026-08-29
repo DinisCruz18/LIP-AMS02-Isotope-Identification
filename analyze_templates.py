@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import ROOT
 import time
@@ -18,6 +19,11 @@ def generate_and_save_templates():
     print("=" * 50)
     print(" MASS TEMPLATES EXTRACTION AND PLOTTING")
     print("=" * 50)
+    
+    # Create output directory for templates
+    output_dir = "templates_out"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     
     # ===================================================================
     # 1. INITIAL CONFIGURATIONS
@@ -69,7 +75,8 @@ def generate_and_save_templates():
         )
         
         # --- 3.2 ROOT Histograms Creation ---
-        hist_title = f"Mass Templates ({target_detector}, {beta_bin[0]} < #beta < {beta_bin[1]});Reconstructed Mass [GeV/c^{{2}}];Normalized Probability (dN/dm)"
+        # Hidden main title for clean LaTeX integration in the report
+        hist_title = ";Reconstructed Mass m [GeV/c^{2}];Normalized Probability (dN/dm)"
         
         h_b10 = ROOT.TH1D(f"template_b10_{target_detector}", hist_title, n_bins, m_min, m_max)
         h_b11 = ROOT.TH1D(f"template_b11_{target_detector}", hist_title, n_bins, m_min, m_max)
@@ -92,10 +99,11 @@ def generate_and_save_templates():
         # Improve axis readability
         h_b10.GetXaxis().SetTitleSize(0.045)
         h_b10.GetYaxis().SetTitleSize(0.045)
-        h_b10.GetYaxis().SetTitleOffset(1.2)
+        h_b10.GetXaxis().SetTitleOffset(1.2)
+        h_b10.GetYaxis().SetTitleOffset(1.4)
 
         # --- 3.4 .root File Export (For Data Analysis) ---
-        root_filename = f"mass_templates_{target_detector}_beta{b_min_str}_{b_max_str}.root"
+        root_filename = os.path.join(output_dir, f"mass_templates_{target_detector}_beta{b_min_str}_{b_max_str}.root")
         out_file = ROOT.TFile(root_filename, "RECREATE")
         h_b10.Write("template_10B")
         h_b11.Write("template_11B")
@@ -104,26 +112,35 @@ def generate_and_save_templates():
         # --- 3.5 .pdf File Export (For Visualization) ---
         canvas = ROOT.TCanvas(f"c_{target_detector}", "Templates Canvas", 800, 600)
         canvas.SetGrid()
-        # Add an extra left margin so the Y-axis title isn't cut off
-        canvas.SetLeftMargin(0.12)
+        
+        # Add an extra left and bottom margin so the titles aren't cut off
+        canvas.SetLeftMargin(0.15)
+        canvas.SetBottomMargin(0.12)
         
         # Dynamic Y-axis adjustment to ensure the peaks do not touch the top
         max_y = max(h_b10.GetMaximum(), h_b11.GetMaximum())
-        h_b10.SetMaximum(max_y * 1.25) 
+        h_b10.SetMaximum(max_y * 1.35) 
         
         # Draw with "HIST" to force a continuous line, without error bars or crosses
         h_b10.Draw("HIST")
         h_b11.Draw("HIST SAME")
         
         # Legend
-        legend = ROOT.TLegend(0.65, 0.75, 0.88, 0.88)
+        legend = ROOT.TLegend(0.65, 0.70, 0.88, 0.85)
         legend.AddEntry(h_b10, "^{10}B Analytical", "l")
         legend.AddEntry(h_b11, "^{11}B Analytical", "l")
         legend.SetBorderSize(0) # Removes the border
         legend.SetTextSize(0.04)
         legend.Draw()
         
-        pdf_filename = f"plot_templates_{target_detector}_beta{b_min_str}_{b_max_str}.pdf"
+        # Add descriptive text box for Detector and Beta Bin
+        tex = ROOT.TLatex()
+        tex.SetNDC()
+        tex.SetTextSize(0.04)
+        tex.DrawLatex(0.20, 0.82, f"{target_detector} Radiator")
+        tex.DrawLatex(0.20, 0.76, f"{beta_bin[0]} < #beta < {beta_bin[1]}")
+        
+        pdf_filename = os.path.join(output_dir, f"plot_templates_{target_detector}_beta{b_min_str}_{b_max_str}.pdf")
         canvas.SaveAs(pdf_filename)
         
         # ROOT Memory Cleanup
