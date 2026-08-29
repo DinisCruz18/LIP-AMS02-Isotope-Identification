@@ -13,18 +13,22 @@ Monte Carlo (MC) generator and the analytical Template engine.
 # 1. ANALYSIS PARAMETERS (User Configurations)
 # ===================================================================
 # --- Monte Carlo Simulation ---
-TARGET_EVENTS = 10000         # Number of valid events to record in the TTree
-PROB_B10 = 0.5                 # Probability of injecting Boron-10 (0.5 = 50%)
+TARGET_EVENTS = 1000000         # Number of valid events to record in the TTree
+
+# Probability of 0.5 (50/50) forces equal statistics for both 
+# isotopes, which is ideal to reduce the error in template generation.
+# In a real cosmic flux analysis, ~0.3 (30% 10B) would be used.
+PROB_B10 = 0.3                 # Probability of injecting Boron-10
 P_MIN = 1.0                    # Minimum generated rigidity [GV]
 P_MAX = 1000.0                 # Maximum generated rigidity [GV]
 
 # --- Fitting Engine and Templates ---
 # Centralizing the binning ensures that the SciPy arrays and ROOT histograms 
 # have strictly the same axes, preventing crashes in TFractionFitter.
-N_BINS = 30                   # Geometric resolution of the mass analysis
+N_BINS = 200                   # Geometric resolution of the mass analysis
 M_MIN = 5.0                    # Lower limit of the mass axis [GeV/c^2]
 M_MAX = 16.0                   # Upper limit of the mass axis [GeV/c^2]
-SIMULATION_FILENAME = "ams_b10_b11_simulation_teste2.root"
+SIMULATION_FILENAME = "ams_b10_b11_simulation.root"
 
 # --- Analysis Channels ---
 # Defines the detectors and velocity (beta) windows to be evaluated.
@@ -33,7 +37,7 @@ SIMULATION_FILENAME = "ams_b10_b11_simulation_teste2.root"
 ANALYSIS_CHANNELS = [
     {'detector': 'TOF', 'beta_bin': (0.80, 0.85)},
     {'detector': 'NaF', 'beta_bin': (0.90, 0.95)},
-    {'detector': 'AGL', 'beta_bin': (0.95, 0.99)}
+    {'detector': 'AGL', 'beta_bin': (0.96, 0.99)}  
 ]
 
 # Global flag to enable/disable Tracker's convoluted integration
