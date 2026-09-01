@@ -127,7 +127,8 @@ def run_fraction_fit():
         frame.GetYaxis().SetTitle("Events / Bin")
         frame.Draw()
         
-        legend = ROOT.TLegend(0.60, 0.70, 0.88, 0.85)
+        # Mover a legenda para o espaço vazio à direita
+        legend = ROOT.TLegend(0.61, 0.55, 0.89, 0.70)
         legend.AddEntry(frame.findObject("Data"), "Simulated Data", "lep")
         legend.AddEntry(frame.findObject("Model"), "Total Fit (MLE)", "l")
         legend.SetBorderSize(0)
@@ -136,8 +137,8 @@ def run_fraction_fit():
         text = ROOT.TLatex()
         text.SetNDC()
         text.SetTextSize(0.04)
-        text.DrawLatex(0.24, 0.92, f"{detector} Radiator | {beta_min} < #beta < {beta_max}")
-        text.DrawLatex(0.24, 0.86, f"^{{10}}B Fraction: {f10_val*100:.1f} #pm {f10_err*100:.1f} %")    
+        text.DrawLatex(0.21, 0.77, f"{detector} Radiator | {beta_min} < #beta < {beta_max}")
+        text.DrawLatex(0.21, 0.71, f"^{{10}}B Fraction: {f10_val*100:.1f} #pm {f10_err*100:.1f} %")
         
         pdf_filename = os.path.join(output_dir, f"fit_result_{detector}_beta{b_min_str}_{b_max_str}.pdf") 
         c1.SaveAs(pdf_filename)
