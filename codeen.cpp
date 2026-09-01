@@ -150,7 +150,7 @@ public:
         TOF_RICH_dist = 40.0;
         
         
-        tracker_r = 0.01;                        // Temporary.
+        tracker_r = 0.04;                        // Temporary.
 
 
 
@@ -188,7 +188,7 @@ public:
 
 void AMS02Simulator::generate_isotope(Event &event){
 
-    double fracao_B10 = 0.25;       // Approximate relative abundance of the B-10 isotope
+    double fracao_B10 = 0.30;       // Approximate relative abundance of the B-10 isotope
                                     // in cosmic rays.
 
     double u = uniform(generator);
@@ -441,11 +441,11 @@ double AMS02Simulator::sigma_beta_RICH(Event &event){
     
     double tan_theta = sin_theta/cos_theta;
     
-    double x_RICH = event.x + 8.65*tan_theta*cos(event.phi);
+    double x_RICH = event.x + (TOF_z_dist + 8.65)*tan_theta*cos(event.phi);
     // The variables stored in the struct correspond to the coordinates at the top of
     // the TOF. At the RICH, these coordinates change depending on the trajectory angle.
     
-    double y_RICH = event.y + 8.65*tan_theta*sin(event.phi);
+    double y_RICH = event.y + (TOF_z_dist + 8.65)*tan_theta*sin(event.phi);
     // The distance between the TOF planes and the RICH must therefore be taken into account.
     
     double r = sqrt(x_RICH*x_RICH + y_RICH*y_RICH);
@@ -580,10 +580,10 @@ void writeTree(AMS02Simulator &sim, int N){
 
 int main(){
 
-    AMS02Simulator sim(1.0,100000.0);   // Object "sim" represents the part of the simulator
+    AMS02Simulator sim(1.0,1000.0);   // Object "sim" represents the part of the simulator
                                         // configured to generate events.
     
-    writeTree(sim,100000);
+    writeTree(sim,1000000);
 
 
     int n_TOF10=0;
@@ -593,7 +593,7 @@ int main(){
     int n_RICH11=0;
     
 
-    for(int i=0;i<100000;i++){
+    for(int i=0;i<1000000;i++){
 
 
         Event event = sim.generate_event();   // For each 'i', one complete event is generated.
